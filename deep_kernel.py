@@ -3,8 +3,6 @@ import torch
 import torch.nn as nn
 import sys, os
 from collections import OrderedDict
-
-# sys.path.append(os.path.abspath("./nas/ELTO"))
 sys.path.append(os.path.abspath("./ELTO"))
 sys.path.append("..")
 # from sklearn.metrics.pairwise import rbf_kernel
@@ -69,25 +67,25 @@ class SplitDiagGaussianDecoder(nn.Module):
             nn.Linear(in_features=64, out_features=8)
         ]), 8
 
-    def clean_state_dict_keys(self, state_dict):
-        cleaned_state_dict = OrderedDict()
-        for key, value in state_dict.items():
-            if 'hidden_layers_mean' in key:
-                new_key = key.replace('_module._hidden_layers_mean.', '')
-                index_offset = 0 
-            elif 'hidden_layers_var' in key:
-                new_key = key.replace('_module._hidden_layers_var.', '')
-                index_offset = len(self._hidden_layers_mean)  
-            elif 'out_layer_mean' in key:
-                new_key = key.replace('_module._out_layer_mean.', str(index_offset + len(self._hidden_layers_mean)) + '.')
-                index_offset = len(self._hidden_layers_mean) + len(self._hidden_layers_var)
-            elif 'out_layer_var' in key:
-                new_key = key.replace('_module._out_layer_var.', str(index_offset + len(self._hidden_layers_mean) + len(self._hidden_layers_var)) + '.')
-            else:
-                continue
-            cleaned_state_dict[new_key] = value
-
-        return cleaned_state_dict
+    # def clean_state_dict_keys(self, state_dict):
+    #     cleaned_state_dict = OrderedDict()
+    #     for key, value in state_dict.items():
+    #         if 'hidden_layers_mean' in key:
+    #             new_key = key.replace('_module._hidden_layers_mean.', '')
+    #             index_offset = 0
+    #         elif 'hidden_layers_var' in key:
+    #             new_key = key.replace('_module._hidden_layers_var.', '')
+    #             index_offset = len(self._hidden_layers_mean)
+    #         elif 'out_layer_mean' in key:
+    #             new_key = key.replace('_module._out_layer_mean.', str(index_offset + len(self._hidden_layers_mean)) + '.')
+    #             index_offset = len(self._hidden_layers_mean) + len(self._hidden_layers_var)
+    #         elif 'out_layer_var' in key:
+    #             new_key = key.replace('_module._out_layer_var.', str(index_offset + len(self._hidden_layers_mean) + len(self._hidden_layers_var)) + '.')
+    #         else:
+    #             continue
+    #         cleaned_state_dict[new_key] = value
+    #
+    #     return cleaned_state_dict
 
     def forward(self, latent_mean, latent_cov):
 
@@ -125,8 +123,8 @@ class Deep_Kernel(nn.Module):
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.pre_train_enc = torch.load(os.path.abspath("nas/rkn_share/experiments/quad_link/enc_params.pth"))
-        self.pre_train_dec = torch.load(os.path.abspath("nas/rkn_share/experiments/quad_link/dec_params.pth"))
+        self.pre_train_enc = torch.load(os.path.abspath("../enc_params.pth"))
+        self.pre_train_dec = torch.load(os.path.abspath("../dec_params.pth"))
 
         self.encoder = self._build_encoder(self.observation_dim, layer_norm=True)
         self.decoder = SplitDiagGaussianDecoder(self.observation_dim, out_dim=8)
@@ -168,35 +166,35 @@ class Deep_Kernel(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def _freeze_encoder(self):
-        for param in self.encoder.parameters():
-            param.requires_grad = False
-
-    def _freeze_all(self):
-        for param in self.parameters():
-            param.requires_grad = False
-        cleaned_state_dict = OrderedDict()
-        for key, value in state_dict.items():
-            if 'hidden_layers_mean' in key:
-                new_key = key.replace('_module._hidden_layers_mean.', '')
-                index_offset = 0 
-            elif 'hidden_layers_var' in key:
-                new_key = key.replace('_module._hidden_layers_var.', '')
-                index_offset = len(self._build_dec_hidden_layers_mean()[0]) 
-            elif 'out_layer_mean' in key:
-                new_key = key.replace('_module._out_layer_mean.', str(index_offset + len(self._build_dec_hidden_layers_mean()[0])) + '.')
-                index_offset = len(self._build_dec_hidden_layers_mean()[0]) + len(self._build_dec_hidden_layers_var()[0])
-            elif 'out_layer_var' in key:
-                new_key = key.replace('_module._out_layer_var.', str(index_offset + len(self._build_dec_hidden_layers_mean()[0]) + len(self._build_dec_hidden_layers_var()[0])) + '.')
-            else:
-                continue
-            cleaned_state_dict[new_key] = value
-
-        return cleaned_state_dict
+    # def _freeze_encoder(self):
+    #     for param in self.encoder.parameters():
+    #         param.requires_grad = False
+    #
+    # def _freeze_all(self):
+    #     for param in self.parameters():
+    #         param.requires_grad = False
+    #     cleaned_state_dict = OrderedDict()
+    #     for key, value in state_dict.items():
+    #         if 'hidden_layers_mean' in key:
+    #             new_key = key.replace('_module._hidden_layers_mean.', '')
+    #             index_offset = 0
+    #         elif 'hidden_layers_var' in key:
+    #             new_key = key.replace('_module._hidden_layers_var.', '')
+    #             index_offset = len(self._build_dec_hidden_layers_mean()[0])
+    #         elif 'out_layer_mean' in key:
+    #             new_key = key.replace('_module._out_layer_mean.', str(index_offset + len(self._build_dec_hidden_layers_mean()[0])) + '.')
+    #             index_offset = len(self._build_dec_hidden_layers_mean()[0]) + len(self._build_dec_hidden_layers_var()[0])
+    #         elif 'out_layer_var' in key:
+    #             new_key = key.replace('_module._out_layer_var.', str(index_offset + len(self._build_dec_hidden_layers_mean()[0]) + len(self._build_dec_hidden_layers_var()[0])) + '.')
+    #         else:
+    #             continue
+    #         cleaned_state_dict[new_key] = value
+    #
+    #     return cleaned_state_dict
 
     def _load_model(self):
         self.encoder.load_state_dict(self.pre_train_enc, strict=False)
-        cleaned_state_dict = self.decoder.clean_state_dict_keys(self.pre_train_dec)
+        # cleaned_state_dict = self.decoder.clean_state_dict_keys(self.pre_train_dec)
         self.decoder.load_state_dict(cleaned_state_dict, strict=False)
         self.encoder = self.encoder.to(self.device)
         self.decoder = self.decoder.to(self.device)
@@ -212,7 +210,6 @@ class Deep_Kernel(nn.Module):
         if obs_2 is None:
             encoded_obs = self.encoder(obs_1)
             encoded_obs = encoded_obs.clone()
-            # encoded_obs = self.mlp(encoded_obs)
             rbf_result = _rbf_kernel(encoded_obs)
         else:
             encoded_obs = None

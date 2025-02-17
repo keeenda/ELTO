@@ -6,45 +6,28 @@ import torch
 class ELTO_KF:
 
     def __init__(self, trained_X, train_obs, window_size, d, device="cuda", is_deep_kernel=False):
-        # expected obs_shape: batch_size * sequence_length * output_dimension
         super().__init__()
 
 
         self.device = device
         self.is_deep_kernel = is_deep_kernel
-        # n_train : T
-        # self.n_train = observation.shape[0]
         self.n_train = train_obs.shape[0]
-        # h : window size
         self.h = window_size
-        # N = T + 2 - 2h
         self.N = self.n_train + 1 - 2 * self.h
 
         self.X = trained_X
         self.y = torch.tensor(train_obs, dtype=torch.float32).to(self.device)
-        # self.y = train_obs.clone().detach().to(device)
+
 
         if len(self.y.shape) == 1:
             self.y = self.y.reshape(-1, 1)
 
-        # self.y = observation  # y is observation ,稍后再改
-        # self.y = torch.tensor(self.y.values).to(self.device)
-        # self.preimage_states = self.y[self.h:self.h + self.N] if len(self.y.shape) == 1 \
-        #     else self.y[self.h:self.h + self.N, :]
+
         if len(self.y.shape) == 1:
             self.preimage_states = self.y[self.h:self.h + self.N]
             self.preimage_states = self.preimage_states.reshape(-1, 1)
         else:
             self.preimage_states = self.y[self.h:self.h + self.N, :]
-
-        
-
-
-        # self.preimage_states = self.preimage_states.reshape(-1, 1)
-        # self.preimage_states = self.y.iloc[self.h:self.h + self.N].to_frame()
-        # self.output_dimension = self.preimage_states.shape[1]
-        # self.preimage_states = torch.tensor(self.preimage_states).to(self.device)
-        # self.preimage_states = self.preimage_states.to(dtype=torch.float32)
 
         self.d = d
         self.n_x0 = 200
@@ -61,10 +44,6 @@ class ELTO_KF:
                 self.kernel_y = self.deep_kernel
                 _, self.encoded_y = self.kernel_y(self.preimage_states)
 
-        # set hyperparams
-        # self.eps_t = torch.exp(torch.tensor(-3)) / (self.N - 1).to(self.device)
-        # self.eps_o = torch.exp(torch.tensor(-3)) / (self.N - 1).to(self.device)
-        # self.eps_q = torch.exp(torch.tensor(-3)) / (self.N - 1).to(self.device)
         self.eps_t = np.exp(-6) / (self.N - 1)
         self.eps_o = np.exp(-6) / (self.N - 1)
         self.eps_q = np.exp(-6) / (self.N - 1)
@@ -92,6 +71,7 @@ class ELTO_KF:
 
     def learn_model(self, eps_t=None, eps_o=None, eps_q=None, bandwidth_k=None, bandwidth_g=None):
         # get operator
+
         # update model parameters
         if eps_t is not None:
             self.eps_t = eps_t
@@ -100,25 +80,17 @@ class ELTO_KF:
         if eps_q is not None:
             self.eps_q = eps_q
 
-        # self.eps_t = self.eps_t / (self.N - 1)
-        # self.eps_o = self.eps_o / (self.N - 1)
-        # self.eps_q = self.eps_q / (self.N - 1)
-
         # compute gram matrices
         self.gram_X = self.kernel_x(self.X.T)
         gram_X1 = self.gram_X[:, :self.N - 1]
         gram_X2 = self.gram_X[:, 1:self.N]
-        # G1 = gram_X1.T @ gram_X1
         if self.is_deep_kernel == False:
             self.gram_Y = self.kernel_y(self.preimage_states)
         else:
-            # _, self.gram_Y = self.kernel_y(self.preimage_states)
             self.gram_Y, _ = self.kernel_y(self.preimage_states)
-        # G_yx = self.gram_Y.T @ self.gram_X
 
         # initial embeddings
         X0 = torch.randn(self.n_x0, self.d).to(self.device)
-        # K0 = k (X, X0) aka. gram_X1_X0 = k (X1, X0)
         self.gram_K0 = self.kernel_x(self.X[:,:self.N-1].T, X0)
 
         self.transition_err_cov = 1e-4 * torch.eye(self.N - 1).to(self.device)
@@ -137,7 +109,7 @@ class ELTO_KF:
         if self.is_deep_kernel == True:
             self.YO = self.encoded_y.T @ self.EOO
         else:
-            self.YO = self.preimage_states.T @ self.EOO  # todo: preimage: YO,kkr 里面是XO
+            self.YO = self.preimage_states.T @ self.EOO
         # initial embeddings
         self.trans_mat0 = inv(self.gram_X[:self.N-1, :self.N-1] + (self.N-1)
                               * self.eps_t * torch.eye(self.N-1).to(self.device)).T @ self.gram_K0
@@ -157,15 +129,9 @@ class ELTO_KF:
             g_Y = self.kernel_y(self.preimage_states, yt)
         else:
             with torch.no_grad():
-                # g_Y, _ = self.kernel_y(self.preimage_states, yt)
                 _, encoded_preimage = self.kernel_y(self.preimage_states)
                 _, encoded_input = self.kernel_y(yt)
                 g_Y = _rbf_kernel(encoded_preimage, encoded_input)
-
-        # observation matrix O : O_cov
-        # Q_t = S_t^(-1) * O^T * (G_y * O * S_t^(-1) * O^T   +  k * I_m) ^ (-1)
-        # Q_denominator_T :  (G_y * O * S_t- * O^T   +  k * I_m)
-        # GO : G_y * O    O_cov : O * S_t-
 
         # kernel Kalman gain operator Q
         if Q is None:
@@ -209,8 +175,6 @@ class ELTO_KF:
         return m_t, S_t
 
     def filter(self, observations):
-        # a structure like kalman filter
-        # but we use ELTO and EOO to update
         assert self.model_learned
         m_t, S_t = self.initial_transition()
         if self.is_deep_kernel == False:

@@ -1,7 +1,5 @@
 This repository contains the code for the paper "Learning Stochastic Nonlinear Dynamics with Embedded Latent Transfer Operators"
 
-# get trained_w as in paper by CCA-based stochastic realization
-
 main.py
 train_eval.py
 
@@ -10,3 +8,6 @@ spectral_learning.py
 
 filter.py
 => estimate ELTO/EOO and then apply those to Kalman filter
+
+modedecom.py
+=> Mode decomposition experiments

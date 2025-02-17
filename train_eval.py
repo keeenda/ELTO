@@ -41,13 +41,9 @@ class Eval_pendulum():
 
         # compute ELTO and EOO
         self.eval_model.learn_model(**kwargs)
-        # print(f'filter evaluation start!')
         # evaluation
         mu, sigma = self.eval_model.filter(self.__test_observations)
-        eval_loss = eval_function(self.__test_groundtruth[10:, :], mu[10:, :], sigma)
-        # print(f'eval_loss = {eval_loss}')
-        # plt.show()
-        # print('\n ----------------------------------- \n')
+        eval_loss = eval_function(self.__test_groundtruth[1:, :], mu[1:, :], sigma)
         return eval_loss.item()
      
 def mean_squared_error(groundtruth, mu, _):

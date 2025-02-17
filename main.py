@@ -23,7 +23,6 @@ if elto_experiment == Eval_pendulum():
     elto_experiment.setup_training(train_data, test_obs, test_groundtruth, epochs, batch_size, window_size, d)
 
     parameter_names = ['eps_t', 'eps_o', 'eps_q']
-    # , 'bandwidth_factor_k', 'bandwidth_factor_g'
 
     @parameter_naming(parameter_names)
     @parameter_transform(np.exp)

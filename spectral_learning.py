@@ -23,9 +23,7 @@ class ELTO_Kernel(nn.Module):
         # n_train : T
         self.n_train = observations.shape[0]  # seq_length
 
-        # h : window size
         self.h = data_window_size
-        # N = T + 2 - 2h
         self.N = self.n_train + 1 - 2 * self.h
         self.d = spectral_window_size
         self.device = device
@@ -49,7 +47,7 @@ class ELTO_Kernel(nn.Module):
         # capital sigma ff/fp/pp in Alg A
         # outputs : SVD result of OC = L^(-1) * Cfp * M^(-T)
 
-        # step 1 compute the square root of Cff and Cpp
+        # compute the square root of Cff and Cpp
         Uff, Sff, Vff = svd(Cff)
         Upp, Spp, Vpp = svd(Cpp)
         Sf = torch.sqrt(torch.diag(Sff))
@@ -108,33 +106,9 @@ class ELTO_Kernel(nn.Module):
                 self.grammat_ff[i, j, :, :] = torch.mm(self.grammat_all[:, f_i_ids],self.grammat_all[f_j_ids, :])
         return
 
-
-    def get_trained_w(self, is_deep_kernel=False):
-        # if  is_deep_kernel == False:
-        # rbf kernel
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        self.grammat_all = rbf_kernel(self.y)
-
-        for itr in range(self.epochs):
-            optimizer.zero_grad()
-            batch_ids = self.data_ids_stream()
-            self.update(next(batch_ids))
-            loss, SS = self.cca_train_loss()
-            loss.backward()
-            # print(f'"SVD result", {SS}')
-            nn.utils.clip_grad_norm_(ELTO_Kernel.parameters(self), max_norm=1)
-            optimizer.step()
-            if itr == 0:
-                print(f'{"itr       CCA loss"}')
-            if (itr + 1) % 20 == 0:
-                print(f'{itr + 1}, {-loss}')
-        print('trained_w get! \n')
-
-
     def get_trained_w(self, is_deep_kernel=False):
         
         if  is_deep_kernel == False:
-
             # rbf kernel
             optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
             self.grammat_all = _rbf_kernel(self.y)
@@ -159,7 +133,6 @@ class ELTO_Kernel(nn.Module):
             optimizer = torch.optim.Adam(self.deep_kernel.parameters(), lr=1e-3)
             optimizer.add_param_group({'params': self.w, 'lr': 1e-3})
             y = self.y
-
             self.deep_kernel.train()
             self.deep_kernel._freeze_encoder()
 

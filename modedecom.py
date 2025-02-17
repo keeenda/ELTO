@@ -10,6 +10,7 @@ class ELTO_MD:
 
         self.device = device
         self.is_deep_kernel = is_deep_kernel
+
         if isinstance(trained_X_t, torch.Tensor):
             self.X1 = trained_X_t.T[:, :-1]
             self.X2 = trained_X_t.T[:, 1:]
